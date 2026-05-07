@@ -78,7 +78,12 @@ int readBatteryPercent() {
 
 // ── Deep sleep ────────────────────────────────────────────────────────────────
 void goDeepSleep() {
-  ledsOff();
+  for (int i = 0; i < 3; i++) {
+    setLeds(200, 0, 0);
+    delay(80);
+    ledsOff();
+    delay(80);
+  }
   delay(100);
   esp_deep_sleep_enable_gpio_wakeup(1ULL << GPIO_BUTTON, ESP_GPIO_WAKEUP_GPIO_LOW);
   esp_deep_sleep_start();
@@ -95,6 +100,10 @@ void onWsEvent(WStype_t type, uint8_t* payload, size_t length) {
     String get = "{\"action\":\"GetCameraProperties\",\"camera\":\"" + cfg_camera_id + "\"}";
     wsClient.sendTXT(sub);
     wsClient.sendTXT(get);
+    int batt = readBatteryPercent();
+    String battMsg = "{\"action\":\"SetBatteryLevel\",\"camera\":\"" + cfg_camera_id
+                   + "\",\"content\":{\"batteryLevel\":" + String(batt) + "}}";
+    wsClient.sendTXT(battMsg);
 
   } else if (type == WStype_TEXT) {
     JsonDocument doc;
@@ -108,7 +117,7 @@ void onWsEvent(WStype_t type, uint8_t* payload, size_t length) {
     } else if (preview) {
       setLeds(0, 200, 0);      // Vert   — preview
     } else {
-      setLeds(0, 0, 200);      // Bleu   — idle
+      ledsOff();               // Idle   — éteint
     }
 
   } else if (type == WStype_DISCONNECTED) {
@@ -232,16 +241,15 @@ void runNormalMode() {
     }
   }
   Serial.println("\nWiFi OK: " + WiFi.localIP().toString());
+  setCpuFrequencyMhz(80);
+  WiFi.setSleep(true);
 
-  // Clignotement vert rapide 5 sec
-  unsigned long greenEnd = millis() + 5000;
-  lastBlink = 0;
-  while (millis() < greenEnd) {
-    if (millis() - lastBlink > 100) {
-      lastBlink = millis();
-      ledState = !ledState;
-      if (ledState) setLeds(0, 200, 0); else ledsOff();
-    }
+  // 5 flashs verts à la connexion
+  for (int i = 0; i < 5; i++) {
+    setLeds(0, 200, 0);
+    delay(80);
+    ledsOff();
+    delay(80);
   }
 
   // Connexion WebSocket
@@ -252,12 +260,28 @@ void runNormalMode() {
   // Boucle principale tally
   lastBlink = 0;
   ledState  = false;
+  unsigned long lastBattCheck = 0;
+  int lastBattPercent = -1;
+  unsigned long wsGraceEnd = millis() + 4000;  // 4s de noir avant d'afficher l'erreur WS
 
   while (true) {
     wsClient.loop();
 
-    // Blink rouge lent si WS déconnecté
-    if (!wsConnected) {
+    // Vérification batterie toutes les 30s, envoi uniquement si le % a changé
+    if (wsConnected && millis() - lastBattCheck > 30000) {
+      lastBattCheck = millis();
+      int batt = readBatteryPercent();
+      if (batt != lastBattPercent) {
+        lastBattPercent = batt;
+        String msg = "{\"action\":\"SetBatteryLevel\",\"camera\":\"" + cfg_camera_id
+                   + "\",\"content\":{\"batteryLevel\":" + String(batt) + "}}";
+        wsClient.sendTXT(msg);
+        Serial.println("Batterie envoyée : " + String(batt) + "%");
+      }
+    }
+
+    // Blink rouge lent si WS déconnecté (après la période de grâce)
+    if (!wsConnected && millis() > wsGraceEnd) {
       if (millis() - lastBlink > 900) {
         lastBlink = millis();
         ledState = !ledState;
