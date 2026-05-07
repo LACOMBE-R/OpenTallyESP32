@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tally Control</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #111;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+      gap: 20px;
+    }
+
+    h1 { font-size: 1.2rem; font-weight: 600; letter-spacing: .05em; color: #aaa; }
+
+    .card {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .card h2 { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; color: #666; margin-bottom: 12px; }
+
+    .row { display: flex; gap: 8px; }
+
+    input[type="text"] {
+      flex: 1;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      padding: 9px 12px;
+      font-size: .95rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    button:disabled { opacity: .35; cursor: default; }
+    button:not(:disabled):hover { opacity: .85; }
+
+    .btn-connect    { background: #2563eb; color: #fff; }
+    .btn-disconnect { background: #374151; color: #fff; }
+
+    /* État tally */
+    .tally {
+      border-radius: 12px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      transition: background .3s, color .3s;
+      background: #1a1a2e;
+      color: #555;
+    }
+    .tally.idle    { background: #1a2a4a; color: #4a7fd4; }
+    .tally.program { background: #4a0a0a; color: #ff4444; }
+    .tally.preview { background: #0a3a1a; color: #44cc66; }
+
+    /* Boutons tally */
+    .tally-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+
+    .btn-idle    { background: #1d3a6e; color: #7eb3ff; }
+    .btn-program { background: #6e1d1d; color: #ff8080; }
+    .btn-preview { background: #1d5c30; color: #80ffaa; }
+
+    /* Status dot */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .85rem;
+      color: #666;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #333;
+      flex-shrink: 0;
+    }
+    .dot.connected    { background: #22c55e; }
+    .dot.connecting   { background: #eab308; animation: pulse 1s infinite; }
+    .dot.disconnected { background: #ef4444; }
+
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+
+    /* Log */
+    .log {
+      font-family: monospace;
+      font-size: .78rem;
+      color: #888;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 10px;
+      height: 140px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .log .in  { color: #60a5fa; }
+    .log .out { color: #a3e635; }
+    .log .err { color: #f87171; }
+    .log .sys { color: #9ca3af; }
+  </style>
+</head>
+<body>
+
+<h1>TALLY CONTROL</h1>
+
+<!-- Connexion -->
+<div class="card">
+  <h2>Connexion</h2>
+  <div class="row" style="margin-bottom:10px">
+    <input type="text" id="wsUrl" value="ws://local.orks.fr:20003/">
+    <button class="btn-connect" id="btnConnect" onclick="connect()">Connecter</button>
+  </div>
+  <div class="row" style="align-items:center; gap:12px">
+    <div class="status">
+      <div class="dot disconnected" id="dot"></div>
+      <span id="statusText">Déconnecté</span>
+    </div>
+    <input type="text" id="camId" value="cam01" placeholder="ID caméra" style="max-width:110px">
+  </div>
+</div>
+
+<!-- État tally -->
+<div class="card">
+  <h2>État caméra</h2>
+  <div class="tally" id="tally">—</div>
+  <div class="tally-btns">
+    <button class="btn-idle"    onclick="setIdle()"    disabled id="bIdle">Idle</button>
+    <button class="btn-preview" onclick="setPreview()" disabled id="bPreview">Preview</button>
+    <button class="btn-program" onclick="setProgram()" disabled id="bProgram">Program</button>
+  </div>
+</div>
+
+<!-- Log -->
+<div class="card">
+  <h2>Log</h2>
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+  let ws = null;
+
+  function camId() { return document.getElementById('camId').value.trim(); }
+
+  function log(msg, cls = 'sys') {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = cls;
+    line.textContent = msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStatus(state, text) {
+    document.getElementById('dot').className = 'dot ' + state;
+    document.getElementById('statusText').textContent = text;
+    const connected = state === 'connected';
+    ['bIdle','bPreview','bProgram'].forEach(id =>
+      document.getElementById(id).disabled = !connected
+    );
+  }
+
+  function setTally(program, preview) {
+    const el = document.getElementById('tally');
+    if (program) {
+      el.className = 'tally program';
+      el.textContent = 'PROGRAM';
+    } else if (preview) {
+      el.className = 'tally preview';
+      el.textContent = 'PREVIEW';
+    } else {
+      el.className = 'tally idle';
+      el.textContent = 'IDLE';
+    }
+  }
+
+  function send(obj) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const msg = JSON.stringify(obj);
+    ws.send(msg);
+    log('→ ' + msg, 'out');
+  }
+
+  function subscribe() {
+    send({ action: 'ActAsSender' });
+    send({ action: 'SubscribeCamera', camera: camId() });
+    send({ action: 'GetCameraProperties', camera: camId() });
+  }
+
+  function setIdle()    { send({ action: 'SetCameraProperties', camera: camId(), content: { program: false, preview: false } }); }
+  function setPreview() { send({ action: 'SetCameraProperties', camera: camId(), content: { program: false, preview: true  } }); }
+  function setProgram() { send({ action: 'SetCameraProperties', camera: camId(), content: { program: true,  preview: false } }); }
+
+  function connect() {
+    const url = document.getElementById('wsUrl').value.trim();
+    if (ws) { ws.close(); }
+
+    setStatus('connecting', 'Connexion...');
+    log('Connexion à ' + url);
+
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      setStatus('connected', 'Connecté');
+      log('Connecté', 'sys');
+      subscribe();
+      document.getElementById('btnConnect').textContent = 'Reconnecter';
+    };
+
+    ws.onmessage = (e) => {
+      log('← ' + e.data, 'in');
+      try {
+        const d = JSON.parse(e.data);
+        if (d.content && typeof d.content.program !== 'undefined') {
+          setTally(d.content.program, d.content.preview);
+        }
+      } catch {}
+    };
+
+    ws.onerror = () => log('Erreur WebSocket', 'err');
+
+    ws.onclose = () => {
+      setStatus('disconnected', 'Déconnecté');
+      log('Déconnecté', 'err');
+      document.getElementById('tally').className = 'tally';
+      document.getElementById('tally').textContent = '—';
+    };
+  }
+</script>
+</body>
+</html>
