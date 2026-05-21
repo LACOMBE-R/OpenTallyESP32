@@ -76,7 +76,7 @@ Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and
                     └────┬──────────────┬─────┘
                   Yes ≥5s│              │No
                          │              │
-           ┌─────────────▼──┐    ┌──────▼──────────────┐
+           ┌─────────────▼──┐    ┌──────▼───────────────┐
            │   AP / Config  │    │     Normal mode      │
            │     mode       │    │  Connect to Wi-Fi    │
            │ SSID: OpenTally│    └──────┬───────────────┘
@@ -86,7 +86,7 @@ Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and
            └─────────┬──────┘    └──┬─────────────────────┬──┘
                      │           No │                     │ Yes
               Serve config    ┌─────▼──────┐    ┌─────────▼──────────┐
-                  form        │ Deep sleep │    │  Connect WebSocket  │
+                  form        │ Deep sleep │    │  Connect WebSocket │
                      │        └────────────┘    └─────────┬──────────┘
               User submits                                │
                      │                       ┌───────────▼────────────┐
