@@ -89,7 +89,7 @@ Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and
                   form        │ Deep sleep │    │  Connect WebSocket │
                      │        └────────────┘    └─────────┬──────────┘
               User submits                                │
-                     │                       ┌───────────▼────────────┐
+                     │                       ┌────────────▼───────────┐
               Save to NVS                    │      Main loop         │
                      │                       │  ┌──────────────────┐  │
                   Restart                    │  │ WS msg received  │  │
