@@ -24,7 +24,6 @@ The KiCad schematic and PCB layout are in [`ECAD/OpenTallyESP32/`](ECAD/OpenTall
 ### Prerequisites
 
 - [PlatformIO](https://platformio.org/) (VS Code extension or CLI)
-- USB-C cable to flash the XIAO
 
 ### Dependencies (resolved automatically by PlatformIO)
 
@@ -32,35 +31,23 @@ The KiCad schematic and PCB layout are in [`ECAD/OpenTallyESP32/`](ECAD/OpenTall
 - `links2004/WebSockets`
 - `bblanchon/ArduinoJson`
 
-### Build & Flash
-
-```bash
-# from the firmware directory
-cd Firmware/OpenTallyESP32
-
-# build
-pio run
-
-# flash (auto-detects port)
-pio run --target upload
-
-# open serial monitor (115200 baud)
-pio device monitor
-```
-
 ---
 
 ## Configuration
 
-Configuration is stored in the ESP32 NVS flash under the namespace `opentally`. The following parameters are saved:
+### NVS flash storage
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `camera_id` | `cam01` | Camera identifier used when subscribing to the tally server |
-| `ws_host` | `local.orks.fr` | WebSocket server hostname |
-| `ws_port` | `20003` | WebSocket server port |
-| `wifi_ssid` | — | Wi-Fi network name |
-| `wifi_pass` | — | Wi-Fi password |
+Configuration is persisted in the ESP32's **NVS (Non-Volatile Storage)** — a key-value store built into the flash that survives resets and power cuts. The Arduino `Preferences` library is used to read and write it under the namespace `opentally`.
+
+Values are written only when the user submits the config form; they are read once at every boot before anything else runs. If a key has never been written, the firmware falls back to the compiled-in default shown below.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `camera_id` | string | `cam01` | Camera identifier sent in every WebSocket message |
+| `ws_host` | string | `local.orks.fr` | WebSocket server hostname |
+| `ws_port` | uint16 | `20003` | WebSocket server port |
+| `wifi_ssid` | string | — | Wi-Fi network name |
+| `wifi_pass` | string | — | Wi-Fi password |
 
 ### Entering configuration mode
 
@@ -71,7 +58,55 @@ The device starts a Wi-Fi access point:
 - **SSID:** `OpenTally-Config`
 - **Password:** `opentally`
 
-Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and click *Configurer*. The device saves the settings, confirms with a countdown banner, then restarts into normal mode.
+Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and click *Configurer*. The device saves the settings to NVS, confirms with a countdown banner, then restarts into normal mode.
+
+### Operating modes — flowchart
+
+```
+                        ┌─────────────────┐
+                        │   Power on /    │
+                        │  Wake from deep │
+                        │      sleep      │
+                        └────────┬────────┘
+                                 │
+                        Load NVS config
+                                 │
+                    ┌────────────▼────────────┐
+                    │  Button held on boot?   │
+                    └────┬──────────────┬─────┘
+                  Yes ≥5s│              │No
+                         │              │
+           ┌─────────────▼──┐    ┌──────▼──────────────┐
+           │   AP / Config  │    │     Normal mode      │
+           │     mode       │    │  Connect to Wi-Fi    │
+           │ SSID: OpenTally│    └──────┬───────────────┘
+           │ IP: 192.168.4.1│          │
+           │ LEDs: purple   │    ┌─────▼─────────────────────┐
+           │   blink        │    │  Wi-Fi connected in 30s?  │
+           └─────────┬──────┘    └──┬─────────────────────┬──┘
+                     │           No │                     │ Yes
+              Serve config    ┌─────▼──────┐    ┌─────────▼──────────┐
+                  form        │ Deep sleep │    │  Connect WebSocket  │
+                     │        └────────────┘    └─────────┬──────────┘
+              User submits                                │
+                     │                       ┌───────────▼────────────┐
+              Save to NVS                    │      Main loop         │
+                     │                       │  ┌──────────────────┐  │
+                  Restart                    │  │ WS msg received  │  │
+                                             │  │  → update LEDs   │  │
+                                             │  │    RED / GREEN / │  │
+                                             │  │      OFF         │  │
+                                             │  └──────────────────┘  │
+                                             │  ┌──────────────────┐  │
+                                             │  │ Every 30s        │  │
+                                             │  │ → send battery % │  │
+                                             │  └──────────────────┘  │
+                                             │  ┌──────────────────┐  │
+                                             │  │ Button press     │  │
+                                             │  │  → deep sleep    │  │
+                                             │  └──────────────────┘  │
+                                             └────────────────────────┘
+```
 
 ---
 
