@@ -79,7 +79,7 @@ Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and
            ┌─────────────▼──┐    ┌──────▼───────────────┐
            │   AP / Config  │    │     Normal mode      │
            │     mode       │    │  Connect to Wi-Fi    │
-           │ SSID: OpenTally│    └──────┬───────────────┘
+           │ SSID: OpenTally│    └─────┬────────────────┘
            │ IP: 192.168.4.1│          │
            │ LEDs: purple   │    ┌─────▼─────────────────────┐
            │   blink        │    │  Wi-Fi connected in 30s?  │
