@@ -12,7 +12,7 @@
 #define PIN_BUTTON     D1
 #define PIN_BATT_READ  D0
 #define PIN_BATT_ADC   D2
-#define NUM_PIXELS     2
+#define NUM_PIXELS     3
 #define GPIO_BUTTON    3      // D1 = GPIO3 sur XIAO ESP32C3
 
 // ── Config ────────────────────────────────────────────────────────────────────
