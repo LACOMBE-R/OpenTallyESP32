@@ -39,8 +39,8 @@ void loadConfig() {
   cfg_camera_id = prefs.getString("camera_id", "cam01");
   cfg_ws_host   = prefs.getString("ws_host",   "local.orks.fr");
   cfg_ws_port   = prefs.getUShort("ws_port",   20003);
-  cfg_wifi_ssid = prefs.getString("wifi_ssid", "MakerSpace - IOT");
-  cfg_wifi_pass = prefs.getString("wifi_pass", "makerspace-nuc-07");
+  cfg_wifi_ssid = prefs.getString("wifi_ssid", "SSID");
+  cfg_wifi_pass = prefs.getString("wifi_pass", "PASSWORD");
   prefs.end();
 }
 
@@ -56,6 +56,16 @@ void saveConfig(const String& camera_id, const String& ws_host, uint16_t ws_port
 }
 
 // ── LED helpers ───────────────────────────────────────────────────────────────
+
+// Status LEDs (pixels 0 & 1) — used for Wi-Fi / sleep / AP blink patterns
+void setStatusLeds(uint8_t r, uint8_t g, uint8_t b) {
+  pixels.setPixelColor(0, pixels.Color(r, g, b));
+  pixels.setPixelColor(1, pixels.Color(r, g, b));
+  pixels.setPixelColor(2, pixels.Color(0, 0, 0));
+  pixels.show();
+}
+
+// Convenience alias for single-color fills (e.g. deep-sleep flash)
 void setLeds(uint8_t r, uint8_t g, uint8_t b) {
   pixels.fill(pixels.Color(r, g, b));
   pixels.show();
@@ -63,6 +73,23 @@ void setLeds(uint8_t r, uint8_t g, uint8_t b) {
 
 void ledsOff() {
   pixels.clear();
+  pixels.show();
+}
+
+// Tally state: pixels 0 & 1 = rear, pixel 2 = front (program only)
+// program takes priority over preview when both are true
+void setTally(bool program, bool preview) {
+  if (program) {
+    pixels.setPixelColor(0, pixels.Color(200, 0, 0));  // rear: red
+    pixels.setPixelColor(1, pixels.Color(200, 0, 0));
+    pixels.setPixelColor(2, pixels.Color(200, 0, 0));  // front: red
+  } else if (preview) {
+    pixels.setPixelColor(0, pixels.Color(0, 200, 0));  // rear: green
+    pixels.setPixelColor(1, pixels.Color(0, 200, 0));
+    pixels.setPixelColor(2, pixels.Color(0, 0, 0));    // front: off
+  } else {
+    pixels.clear();
+  }
   pixels.show();
 }
 
@@ -111,14 +138,7 @@ void onWsEvent(WStype_t type, uint8_t* payload, size_t length) {
 
     bool program = doc["content"]["program"] | false;
     bool preview = doc["content"]["preview"] | false;
-
-    if (program) {
-      setLeds(200, 0, 0);      // Rouge  — on air
-    } else if (preview) {
-      setLeds(0, 200, 0);      // Vert   — preview
-    } else {
-      ledsOff();               // Idle   — éteint
-    }
+    setTally(program, preview);
 
   } else if (type == WStype_DISCONNECTED) {
     wsConnected = false;
@@ -214,7 +234,7 @@ void runAPMode() {
     if (millis() - lastBlink > 800) {
       lastBlink = millis();
       ledState = !ledState;
-      if (ledState) setLeds(80, 0, 80); else ledsOff();
+      if (ledState) setStatusLeds(80, 0, 80); else ledsOff();
     }
   }
 }
@@ -234,10 +254,17 @@ void runNormalMode() {
       Serial.println("\nTimeout WiFi → deep sleep");
       goDeepSleep();
     }
+    if (digitalRead(PIN_BUTTON) == LOW) {
+      delay(50);
+      if (digitalRead(PIN_BUTTON) == LOW) {
+        while (digitalRead(PIN_BUTTON) == LOW) delay(10);
+        goDeepSleep();
+      }
+    }
     if (millis() - lastBlink > 400) {
       lastBlink = millis();
       ledState = !ledState;
-      if (ledState) setLeds(0, 0, 200); else ledsOff();
+      if (ledState) setStatusLeds(0, 0, 200); else ledsOff();
     }
   }
   Serial.println("\nWiFi OK: " + WiFi.localIP().toString());
@@ -285,7 +312,7 @@ void runNormalMode() {
       if (millis() - lastBlink > 900) {
         lastBlink = millis();
         ledState = !ledState;
-        if (ledState) setLeds(180, 0, 0); else ledsOff();
+        if (ledState) setStatusLeds(180, 0, 0); else ledsOff();
       }
     }
 
@@ -321,7 +348,7 @@ void setup() {
   while (digitalRead(PIN_BUTTON) == LOW) {
     if (millis() - pressStart >= LONG_PRESS_MS) {
       longPress = true;
-      setLeds(80, 0, 80);   // Violet = long press confirmé
+      setStatusLeds(80, 0, 80);   // Violet = long press confirmé
       break;
     }
     delay(10);

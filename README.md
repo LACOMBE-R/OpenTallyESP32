@@ -11,7 +11,7 @@ This project was created for the [orKs](https://lce.gg/) association for the **L
 | Component | Details |
 |-----------|---------|
 | MCU | Seeed Studio XIAO ESP32-C3 |
-| LEDs | 2× NeoPixel (WS2812B), pin **D8** |
+| LEDs | 3× NeoPixel (WS2812B), pin **D8** — 2 rear + 1 front-facing |
 | Button | Tactile switch, pin **D1** (GPIO 3) |
 | Battery sensing | Enable pin **D0**, ADC pin **D2** — voltage divider, 3.0 V–4.2 V range |
 
@@ -120,21 +120,31 @@ Connect to it and open **http://192.168.4.1** in a browser. Fill in the form and
 
 ### LED states
 
+The device has two **rear LEDs** (visible to the operator) and one **front LED** (visible to the talent, facing the subject).
+
+**Tally states**
+
+| State | Rear LEDs (0 & 1) | Front LED (2) |
+|-------|-------------------|---------------|
+| Program (on air) | Red | Red |
+| Preview | Green | Off |
+| Program + Preview | Red (program takes priority) | Red |
+| Idle | Off | Off |
+
+**Status patterns** (rear LEDs only, front LED stays off)
+
 | Color | Pattern | Meaning |
 |-------|---------|---------|
 | Blue | Slow blink | Connecting to Wi-Fi |
 | Green | 5 quick flashes | Wi-Fi connected |
-| Red | Solid | Camera is **Program** (on air) |
-| Green | Solid | Camera is **Preview** |
-| Off | — | Camera is **Idle** |
-| Red | Slow blink | Wi-Fi connected but WebSocket disconnected |
+| Red | Slow blink | WebSocket disconnected |
 | Purple | Slow blink | AP config mode active |
 | Red | 3 quick flashes | Entering deep sleep |
 
 ### Power saving
 
 - After Wi-Fi connects the CPU is throttled to **80 MHz** and Wi-Fi modem-sleep is enabled.
-- Press the button at any time during normal operation to enter **deep sleep**. The device will wake again on the next button press.
+- Press the button at any time — including during Wi-Fi connection — to immediately enter **deep sleep**. The device will wake again on the next button press.
 - If Wi-Fi does not connect within **30 seconds**, the device goes to deep sleep automatically.
 
 ### Battery reporting
