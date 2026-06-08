@@ -25,6 +25,29 @@ The KiCad schematic and PCB layout are in [`ECAD/OpenTallyESP32/`](ECAD/OpenTall
 
 - [PlatformIO](https://platformio.org/) (VS Code extension or CLI)
 
+### Credentials
+
+Sensitive values (WiFi credentials, WebSocket server) are kept out of version control in a local file:
+
+```
+Firmware/OpenTallyESP32/include/credentials.h
+```
+
+This file is listed in `.gitignore` and will never be committed. Before building, copy the example file and fill in your values:
+
+```bash
+cp include/credentials.h.example include/credentials.h
+```
+
+```cpp
+#define DEFAULT_WIFI_SSID  "your_ssid"
+#define DEFAULT_WIFI_PASS  "your_password"
+#define DEFAULT_WS_HOST    "your.websocket.server"
+#define DEFAULT_WS_PORT    80
+```
+
+These defines are used as fallback defaults when no configuration has been saved to flash yet. Once configured via the dashboard, the flash values take over and these defaults are no longer used.
+
 ### Dependencies (resolved automatically by PlatformIO)
 
 - `adafruit/Adafruit NeoPixel`
@@ -44,8 +67,8 @@ Values are written only when the user submits the config form; they are read onc
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `camera_id` | string | `cam01` | Camera identifier sent in every WebSocket message |
-| `ws_host` | string | `local.orks.fr` | WebSocket server hostname |
-| `ws_port` | uint16 | `20003` | WebSocket server port |
+| `ws_host` | string | `your.websocket.server` | WebSocket server hostname |
+| `ws_port` | uint16 | `80` | WebSocket server port |
 | `wifi_ssid` | string | — | Wi-Fi network name |
 | `wifi_pass` | string | — | Wi-Fi password |
 
@@ -186,7 +209,7 @@ All messages are JSON objects with at least an `action` field and, where relevan
 
 ## Browser control tool
 
-[`tally-control.html`](tally-control.html) is a standalone HTML file intended primarily for **testing purposes** — useful to verify the WebSocket server is working and to trigger tally states without needing physical hardware. Open it in any browser, enter the WebSocket URL (e.g. `ws://local.orks.fr:20003/`) and the camera ID, then click **Connecter**. You can then manually set a camera to **Idle**, **Preview**, or **Program**. All messages sent and received are shown in the log panel.
+[`tally-control.html`](tally-control.html) is a standalone HTML file intended primarily for **testing purposes** — useful to verify the WebSocket server is working and to trigger tally states without needing physical hardware. Open it in any browser, enter the WebSocket URL (e.g. `ws://your.websocket.server:80/`) and the camera ID, then click **Connecter**. You can then manually set a camera to **Idle**, **Preview**, or **Program**. All messages sent and received are shown in the log panel.
 
 ---
 

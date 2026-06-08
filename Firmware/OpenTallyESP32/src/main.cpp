@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "credentials.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsClient.h>
@@ -37,10 +38,10 @@ String   cfg_wifi_pass;
 void loadConfig() {
   prefs.begin("opentally", true);
   cfg_camera_id = prefs.getString("camera_id", "cam01");
-  cfg_ws_host   = prefs.getString("ws_host",   "local.orks.fr");
-  cfg_ws_port   = prefs.getUShort("ws_port",   20003);
-  cfg_wifi_ssid = prefs.getString("wifi_ssid", "SSID");
-  cfg_wifi_pass = prefs.getString("wifi_pass", "PASSWORD");
+  cfg_ws_host   = prefs.getString("ws_host",   DEFAULT_WS_HOST);
+  cfg_ws_port   = prefs.getUShort("ws_port",   DEFAULT_WS_PORT);
+  cfg_wifi_ssid = prefs.getString("wifi_ssid", DEFAULT_WIFI_SSID);
+  cfg_wifi_pass = prefs.getString("wifi_pass", DEFAULT_WIFI_PASS);
   prefs.end();
 }
 
