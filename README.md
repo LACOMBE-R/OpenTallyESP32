@@ -154,15 +154,17 @@ The device has two **rear LEDs** (visible to the operator) and one **front LED**
 | Program + Preview | Red (program takes priority) | Red |
 | Idle | Off | Off |
 
-**Status patterns** (rear LEDs only, front LED stays off)
+**Status patterns**
 
-| Color | Pattern | Meaning |
-|-------|---------|---------|
-| Blue | Slow blink | Connecting to Wi-Fi |
-| Green | 5 quick flashes | Wi-Fi connected |
-| Red | Slow blink | WebSocket disconnected |
-| Purple | Slow blink | AP config mode active |
-| Red | 3 quick flashes | Entering deep sleep |
+Slow-blink patterns affect rear LEDs only (front LED stays off). Quick-flash patterns fill all 3 LEDs.
+
+| Color | Pattern | Front LED | Meaning |
+|-------|---------|-----------|---------|
+| Blue | Slow blink | Off | Connecting to Wi-Fi |
+| Green | 5 quick flashes | On | Wi-Fi connected |
+| Red | Slow blink | Off | WebSocket disconnected |
+| Purple | Slow blink | Off | AP config mode active |
+| Red | 3 quick flashes | On | Entering deep sleep |
 
 ### Power saving
 
@@ -219,10 +221,15 @@ All messages are JSON objects with at least an `action` field and, where relevan
 OpenTallyESP32/
 ├── ECAD/
 │   ├── LIB/                  KiCad symbol and footprint library (XIAO ESP32-C3)
-│   └── OpenTallyESP32/       KiCad schematic and PCB layout
+│   └── OpenTallyESP32/       KiCad project (schematic, PCB layout)
+│       ├── *.kicad_*         KiCad project files
+│       ├── *.gbr / *.gbrjob  Gerber files for PCB manufacturing
+│       ├── *.dxf             DXF exports
+│       └── OpenTallyESP32PCB.step  3D STEP model
 ├── Firmware/
 │   └── OpenTallyESP32/
 │       ├── src/main.cpp      Full firmware source
+│       ├── include/          credentials.h.example (copy to credentials.h before building)
 │       ├── test/             Manual test sketches
 │       └── platformio.ini    PlatformIO project config
 └── tally-control.html        Browser-based tally controller
